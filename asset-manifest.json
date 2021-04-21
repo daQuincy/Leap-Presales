@@ -1,20 +1,20 @@
 {
   "files": {
-    "main.js": "/daQuincy/Leap-Presales/tree/gh-pages/static/js/main.dc3d41a0.chunk.js",
-    "main.js.map": "/daQuincy/Leap-Presales/tree/gh-pages/static/js/main.dc3d41a0.chunk.js.map",
+    "main.js": "/daQuincy/Leap-Presales/tree/gh-pages/static/js/main.e74b9444.chunk.js",
+    "main.js.map": "/daQuincy/Leap-Presales/tree/gh-pages/static/js/main.e74b9444.chunk.js.map",
     "runtime-main.js": "/daQuincy/Leap-Presales/tree/gh-pages/static/js/runtime-main.f896b453.js",
     "runtime-main.js.map": "/daQuincy/Leap-Presales/tree/gh-pages/static/js/runtime-main.f896b453.js.map",
     "static/css/2.4c97ca4f.chunk.css": "/daQuincy/Leap-Presales/tree/gh-pages/static/css/2.4c97ca4f.chunk.css",
-    "static/js/2.44815816.chunk.js": "/daQuincy/Leap-Presales/tree/gh-pages/static/js/2.44815816.chunk.js",
-    "static/js/2.44815816.chunk.js.map": "/daQuincy/Leap-Presales/tree/gh-pages/static/js/2.44815816.chunk.js.map",
+    "static/js/2.4ba5286e.chunk.js": "/daQuincy/Leap-Presales/tree/gh-pages/static/js/2.4ba5286e.chunk.js",
+    "static/js/2.4ba5286e.chunk.js.map": "/daQuincy/Leap-Presales/tree/gh-pages/static/js/2.4ba5286e.chunk.js.map",
     "index.html": "/daQuincy/Leap-Presales/tree/gh-pages/index.html",
     "static/css/2.4c97ca4f.chunk.css.map": "/daQuincy/Leap-Presales/tree/gh-pages/static/css/2.4c97ca4f.chunk.css.map",
-    "static/js/2.44815816.chunk.js.LICENSE.txt": "/daQuincy/Leap-Presales/tree/gh-pages/static/js/2.44815816.chunk.js.LICENSE.txt"
+    "static/js/2.4ba5286e.chunk.js.LICENSE.txt": "/daQuincy/Leap-Presales/tree/gh-pages/static/js/2.4ba5286e.chunk.js.LICENSE.txt"
   },
   "entrypoints": [
     "static/js/runtime-main.f896b453.js",
     "static/css/2.4c97ca4f.chunk.css",
-    "static/js/2.44815816.chunk.js",
-    "static/js/main.dc3d41a0.chunk.js"
+    "static/js/2.4ba5286e.chunk.js",
+    "static/js/main.e74b9444.chunk.js"
   ]
 }
