@@ -1,0 +1,20 @@
+{
+  "files": {
+    "main.js": "/daQuincy/Leap-Presales/static/js/main.dc3d41a0.chunk.js",
+    "main.js.map": "/daQuincy/Leap-Presales/static/js/main.dc3d41a0.chunk.js.map",
+    "runtime-main.js": "/daQuincy/Leap-Presales/static/js/runtime-main.d38bc78b.js",
+    "runtime-main.js.map": "/daQuincy/Leap-Presales/static/js/runtime-main.d38bc78b.js.map",
+    "static/css/2.4c97ca4f.chunk.css": "/daQuincy/Leap-Presales/static/css/2.4c97ca4f.chunk.css",
+    "static/js/2.44815816.chunk.js": "/daQuincy/Leap-Presales/static/js/2.44815816.chunk.js",
+    "static/js/2.44815816.chunk.js.map": "/daQuincy/Leap-Presales/static/js/2.44815816.chunk.js.map",
+    "index.html": "/daQuincy/Leap-Presales/index.html",
+    "static/css/2.4c97ca4f.chunk.css.map": "/daQuincy/Leap-Presales/static/css/2.4c97ca4f.chunk.css.map",
+    "static/js/2.44815816.chunk.js.LICENSE.txt": "/daQuincy/Leap-Presales/static/js/2.44815816.chunk.js.LICENSE.txt"
+  },
+  "entrypoints": [
+    "static/js/runtime-main.d38bc78b.js",
+    "static/css/2.4c97ca4f.chunk.css",
+    "static/js/2.44815816.chunk.js",
+    "static/js/main.dc3d41a0.chunk.js"
+  ]
+}
