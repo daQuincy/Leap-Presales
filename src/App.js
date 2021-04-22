@@ -21,6 +21,10 @@ const pluto = new Contract(
 function App() {
   const [connection, setConnection] = useState(false);
   const [totalContribution, setTotalContribution] = useState(0);
+  const [chainID, setChainId] = useState(undefined);
+  const [allowBuy, setAllowBuy] = useState(false);
+  const [presalesStart, setPresalesStart] = useState(false);
+  const [presalesEnd, setPresalesEnd] = useState(false);
 
   const [beneficiary, setBeneficiary] = useState(undefined);
   const [contribution, setContribution] = useState(0);
@@ -34,12 +38,10 @@ function App() {
   const [txnHash, setTxnHash] = useState(undefined);
   const [tokensAmount, setTokenAmounts] = useState(0);
 
-  let chainID;
-
   useEffect(() => {
     const init = setInterval(async () => {
-      chainID = (await provider.getNetwork())["chainId"];
-      if (chainID === 97 || chainID === 56){
+      const _chainID = (await provider.getNetwork())["chainId"];
+      if (_chainID === 97 || _chainID === 56){
         setConnection(true);
         const _address = await signer.getAddress();
 
@@ -49,9 +51,18 @@ function App() {
         let _totalContribution = await pluto.weiRaised();
         _totalContribution = utils.formatEther(_totalContribution);
 
+        const _presalesStart = await pluto.getPresalesStarted();
+        const _presalesEnd = await pluto.getPresalesEnded();
+
+        const _allowBuy = _presalesStart && !_presalesEnd;
+
         setTokenAmounts(_tokensAmount.toString());
         setTotalContribution(_totalContribution);
         setAddress(_address);
+        setChainId(_chainID);
+        setPresalesStart(_presalesStart);
+        setPresalesEnd(_presalesEnd);
+        setAllowBuy(_allowBuy);
       } else {
         setConnection(false)
       }
@@ -121,6 +132,8 @@ function App() {
 
       <Message hidden={connection} error={!connection} header="Opps!" content={"Please connect to BSC through Metamask!"} />
 
+      <Message info hidden={presalesStart} header="Presales has not started yet" />
+      <Message info hidden={!presalesEnd} header="Presales has already ended" />
       <Message header={"Current Total Contribution"} content={totalContribution + " BNB"} />
  
       <Form onSubmit={buyPresalesTokens}>
@@ -128,16 +141,17 @@ function App() {
             <label>Beneficiary Address</label>
             <Input
                 onChange={handleBeneficiary}
+                placeholder="Enter a valid BNB address"
             />
 
             <label>Amount to Contribute</label>
             <Input
               onChange={handleContribution}
+              placeholder="MAX: 0.5 BNB"
               label="BNB"
               labelPosition="right"
             />
-
-            <Button primary disabled={(!valContribution || !valBeneficiary)} loading={buttonLoading}>
+            <Button primary disabled={(!valContribution || !valBeneficiary || !allowBuy || !connection)} loading={buttonLoading}>
               Buy Tokens!
             </Button>
         </Form.Field>
@@ -148,7 +162,7 @@ function App() {
       </h3>
 
       <h3>
-        Transaction hash: {txnHash ? <a href={txnHash}></a> : " "}
+        Transaction hash: <a href={txnLink}>{txnHash ?  txnHash : " "}</a>
       </h3>
 
     </div>
