@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { ethers, Contract , utils} from 'ethers';
-import { Form, Input, Message, Button } from 'semantic-ui-react';
+import { Form, Input, Message, Button, Card } from 'semantic-ui-react';
 import Pluto from './contracts/Pluto.json';
 import 'semantic-ui-css/semantic.min.css'
 
@@ -30,18 +30,24 @@ function App() {
   const [capReached, setCapReached] = useState(false);
   const [indvCap, setIndvCap] = useState(false);
 
+  // beneficiary's stats
   const [beneficiary, setBeneficiary] = useState(undefined);
+  const [beneContributed, setBeneContributed] = useState(0);
+  const [beneTokensAmount, setBeneTokensAmount] = useState(0);
+  
   const [contribution, setContribution] = useState(0);
-  const [contributed, setContributed] = useState(0);
   const [valBeneficiary, setValBeneficiary] = useState(false);
   const [valContribution, setValContribution] = useState(false);
 
   const [buyButtonLoading, setBuyButtonLoading] = useState(false);
   const [refundButtonLoading, setRefundButtonLoading] = useState(false);
+  const [withdrawButtonLoading, setWithdrawButtonLoading] = useState(false);
 
-  const [address, setAddress] = useState(undefined);
   const [txnLink, setTxnLink] = useState(undefined);
   const [txnHash, setTxnHash] = useState(undefined);
+
+  // current wallet's stats
+  const [contributed, setContributed] = useState(0);
   const [tokensAmount, setTokenAmounts] = useState(0);
 
   useEffect(() => {
@@ -70,7 +76,6 @@ function App() {
           setTokenAmounts(_tokensAmount);
           setContributed(_contributed);
           setTotalContribution(_totalContribution);
-          setAddress(_address);
           setPresalesStart(_presalesStart);
           setPresalesEnd(_presalesEnd);
           setAllowBuy(_allowBuy);
@@ -84,16 +89,21 @@ function App() {
     }, 1000);
 
     const init = async () => {
-      const _chainID = (await provider.getNetwork())["chainId"];
-      signer = provider.getSigner();
+      if (provider !== undefined) {
+        const _chainID = (await provider.getNetwork())["chainId"];
+        signer = provider.getSigner();
 
-      pluto = new Contract(
-        Pluto.networks[_chainID].address,
-        Pluto.abi,
-        signer
-      );
+        pluto = new Contract(
+          Pluto.networks[_chainID].address,
+          Pluto.abi,
+          signer
+        );
 
-      setChainID(_chainID);
+        setChainID(_chainID);
+      } else {
+        signer = undefined;
+        pluto = undefined;
+      }
     }
 
     init();
@@ -113,9 +123,36 @@ function App() {
     } else if (chainID === 56) {
       txLink = "https://bscscan.com/tx/" + tx.hash;
     };
+
+    let _tokensAmount = await pluto.getTokens(beneficiary);
+    _tokensAmount = utils.formatUnits(_tokensAmount, 9);
+
+    let _contributed = await pluto.getContribution(beneficiary);
+    _contributed = utils.formatEther(_contributed);
+    
+    setBeneContributed(_contributed);
+    setBeneTokensAmount(_tokensAmount);
     setTxnHash(tx.hash);
     setTxnLink(txLink);
     setBuyButtonLoading(false);
+  }
+
+  const withdrawPresalesTokens = async (e) => {
+    e.preventDefault();
+    setWithdrawButtonLoading(true);
+    const tx = await pluto.withdrawPresalesTokens(beneficiary, {gasLimit: 500000});
+    await tx.wait();
+
+    let txLink;
+    if (chainID === 97) {
+      txLink = "https://testnet.bscscan.com/tx/" + tx.hash;
+    } else if (chainID === 56) {
+      txLink = "https://bscscan.com/tx/" + tx.hash;
+    };
+
+    setTxnHash(tx.hash);
+    setTxnLink(txLink);
+    setWithdrawButtonLoading(false);
   }
 
   const refundCapNotReached = async (e) => {
@@ -131,21 +168,26 @@ function App() {
       txLink = "https://bscscan.com/tx/" + tx.hash;
     };
 
-    let _tokensAmount = await pluto.getTokens(address);
-    _tokensAmount = utils.formatUnits(_tokensAmount, 9);
-
-    setTokenAmounts(_tokensAmount.toString());
     setTxnHash(tx.hash);
     setTxnLink(txLink);
     setRefundButtonLoading(false);
   }
 
-  const handleBeneficiary = (e) => {
+  const handleBeneficiary = async (e) => {
     let _beneficiary = e.target.value;
     const valid = utils.isAddress(_beneficiary);
     try {
       if (valid) {
         _beneficiary = utils.getAddress(_beneficiary);
+
+        let _tokensAmount = await pluto.getTokens(_beneficiary);
+        _tokensAmount = utils.formatUnits(_tokensAmount, 9);
+
+        let _contributed = await pluto.getContribution(_beneficiary);
+        _contributed = utils.formatEther(_contributed);
+        
+        setBeneContributed(_contributed);
+        setBeneTokensAmount(_tokensAmount);
         setValBeneficiary(true);
         setBeneficiary(_beneficiary);
       } else {
@@ -164,8 +206,10 @@ function App() {
       if (_contribution <= 0 || _contribution > 0.5) {
         setValContribution(false);
         setContribution(0);
+        setIndvCap(false);
       } else {
-        const _contributed = await pluto.getContribution(beneficiary);
+        let _contributed = await pluto.getContribution(beneficiary);
+        _contributed = utils.formatEther(_contributed);
         const _individualCap = parseFloat(_contribution) + parseFloat(_contributed);
         if (_individualCap > 0.5) {
           setIndvCap(true);
@@ -179,7 +223,8 @@ function App() {
       }
     } catch {
       setValContribution(false);
-      setContribution(0)
+      setContribution(0);
+      setIndvCap(false);
     }
   }
   
@@ -190,7 +235,7 @@ function App() {
 
       <Message hidden={connection} error={!connection} header="Opps!" content={"Please connect to BSC through Metamask!"} />
 
-      <Message info hidden={presalesStart} header="Presales has not started yet" />
+      <Message info hidden={presalesStart || !connection} header="Presales has not started yet" />
       <Message info hidden={!presalesEnd} header="Presales has already ended" />
       <Message header={"Current Total Contribution"} content={totalContribution + " BNB"} />
  
@@ -205,29 +250,57 @@ function App() {
             <label>Amount to Contribute</label>
             <Input
               onChange={handleContribution}
-              placeholder="MAX: 0.5 BNB"
+              placeholder="MAX: 0.5 BNB per address (cumulative)"
               label="BNB"
               labelPosition="right"
               disabled={presalesEnd}
             />
 
-            <Button primary disabled={(!valContribution || !valBeneficiary || !allowBuy || !connection)} loading={buyButtonLoading} onClick={buyPresalesTokens}>
+            <Button primary disabled={!valContribution || !valBeneficiary || !allowBuy || !connection} loading={buyButtonLoading} onClick={buyPresalesTokens}>
               Buy Tokens!
             </Button>
 
-            <Button primary disabled={!presalesEnd && !capReached && !valBeneficiary} loading={refundButtonLoading} onClick={refundCapNotReached}>
+            <Button primary disabled={!(presalesEnd && capReached) || !valBeneficiary || !connection} loading={withdrawButtonLoading} onClick={withdrawPresalesTokens}>
+              Withdraw
+            </Button>
+
+            <Button primary disabled={!(presalesEnd && !capReached) || !valBeneficiary || !connection} loading={refundButtonLoading} onClick={refundCapNotReached}>
               Refund
             </Button>
         </Form.Field>
       </Form>
-      <Message hidden={!indvCap} error={true} header="Exceed individual limit!" content={"This transaction will fail because you exceeded individual limit. Enter a lower amount"} />
-      <h3>
-        Tokens you bought: {tokensAmount}
-      </h3>
 
-      <h3>
-        BNB contributed: {contributed}
-      </h3>
+      <Message hidden={!indvCap} error={true} header="Exceed individual limit!" content={"This transaction will fail because you exceeded individual limit. Enter a lower amount"} />
+
+      <Card.Group>
+        <Card
+          header="Your stats"
+          description={
+            <div>
+              <p>
+                Tokens bought: {tokensAmount}
+              </p>
+              <p>
+                BNB contributed: {contributed}
+              </p>
+            </div>
+          }
+        />
+
+        <Card
+          header="Beneficiary's stats"
+          description={
+            <div>
+              <p>
+                Tokens bought: {beneTokensAmount}
+              </p>
+              <p>
+                BNB contributed: {beneContributed}
+              </p>
+            </div>
+          }
+        />
+      </Card.Group>
 
       <h3>
         Transaction hash: <a href={txnLink}>{txnHash ?  txnHash : " "}</a>
