@@ -1,14 +1,34 @@
 import { useState, useEffect } from 'react';
 import { ethers, Contract , utils} from 'ethers';
-import { Form, Input, Message, Button, Card } from 'semantic-ui-react';
+import { Button, TextField, Grid, Card, CardContent } from '@material-ui/core';
+import { makeStyles } from '@material-ui/core/styles';
+import Typography from '@material-ui/core/Typography';
+import { Alert } from '@material-ui/lab';
+
 import Leap from './contracts/Leap.json';
 import Web3Modal from "web3modal";
 import WalletConnectProvider from "@walletconnect/web3-provider";
-import 'semantic-ui-css/semantic.min.css'
 
 let provider = undefined;
 let signer = undefined;
 let leap = undefined;
+
+const useCardStyles = makeStyles({
+  root: {
+    minWidth: 275,
+  },
+  bullet: {
+    display: 'inline-block',
+    margin: '0 2px',
+    transform: 'scale(0.8)',
+  },
+  title: {
+    fontSize: 14,
+  },
+  pos: {
+    marginBottom: 12,
+  },
+});
 
 function App() {
   const [connection, setConnection] = useState(false);
@@ -42,6 +62,8 @@ function App() {
   // current wallet's stats
   const [contributed, setContributed] = useState(0);
   const [tokensAmount, setTokenAmounts] = useState(0);
+
+  const cardClasses = useCardStyles();
 
   useEffect(() => {
     const load = setInterval(async () => {
@@ -201,6 +223,7 @@ function App() {
 
   const handleBeneficiary = async (e) => {
     let _beneficiary = e.target.value;
+
     const valid = utils.isAddress(_beneficiary);
     try {
       if (valid) {
@@ -259,83 +282,93 @@ function App() {
       <h1>Presales</h1>
       <br></br>
 
-      <Button negative={!connection} positive={connection} onClick={getProvider}>{connection ? "Connected" :"Connect to Web3"}</Button>
+      <Button variant="outlined" color={connection ? "primary" : "secondary"} onClick={getProvider}>{connection ? "Connected" :"Connect to Web3"}</Button>
+      <br></br>
+      {connection ? <Alert variant="outlined" severity="info">{"Address: " + signerAddress}</Alert> : <Alert severity="error">"Please connect to BSC through your wallet!"</Alert>} 
+      {(!presalesStart || connection) ? <Alert variant="outlined" severity="warning">Presales has not started</Alert> : " "}
+      {presalesEnd ? <Alert variant="outlined" severity="warning">"Presales has already ended</Alert> : " "}
+      <Alert variant="outlined" severity="info">{"Current toal contribution: " + totalContribution + " BNB"}</Alert>
 
-      <Message hidden={connection} error={!connection} header="Opps!" content={"Please connect to BSC through your wallet!"} />
-      <Message hidden={!connection} info header="Connected to web3" content={"Address: " + signerAddress} />
+      <br></br>
+      <Grid>
+        <TextField
+            onChange={handleBeneficiary}
+            label="Beneficiary Address"
+            placeholder="Enter a valid BNB address"
+            variant="outlined"
+            fullWidth={true}
+        />
 
-      <Message warning hidden={presalesStart || !connection} header="Presales has not started yet" />
-      <Message warning hidden={!presalesEnd} header="Presales has already ended" />
-      <Message header={"Current Total Contribution"} content={totalContribution + " BNB"} />
- 
-      <Form>
-        <Form.Field>
-            <label>Beneficiary Address</label>
-            <Input
-                onChange={handleBeneficiary}
-                placeholder="Enter a valid BNB address"
-            />
+        <TextField
+          onChange={handleContribution}
+          label="Amount to Contribute (BNB)"
+          placeholder="MAX: 0.5 BNB per address (cumulative)"
+          variant="outlined"
+          fullWidth={true}
+          disabled={presalesEnd}
+        />
+      </Grid>
+      <br></br>
 
-            <label>Amount to Contribute</label>
-            <Input
-              onChange={handleContribution}
-              placeholder="MAX: 0.5 BNB per address (cumulative)"
-              label="BNB"
-              labelPosition="right"
-              disabled={presalesEnd}
-            />
+      {indvCap ? <Alert error>This transaction will fail because you exceeded individual limit. Enter a lower amount</Alert> : " "}
 
-            <Button primary disabled={!valContribution || !valBeneficiary || !allowBuy || !connection} loading={buyButtonLoading} onClick={buyPresalesTokens}>
-              Buy Tokens!
-            </Button>
+      <Grid 
+        container
+        direction="row"
+        justify="space-evenly"
+        alignItems="center"
+      >
+        <Button color="primary" variant="contained" disabled={!valContribution || !valBeneficiary || !allowBuy || !connection} loading={buyButtonLoading} onClick={buyPresalesTokens}>
+          Buy Tokens!
+        </Button>
+        {" "}
+        <Button color="primary" variant="contained" disabled={!(presalesEnd && capReached) || !valBeneficiary || !connection} loading={withdrawButtonLoading} onClick={withdrawPresalesTokens}>
+          Withdraw
+        </Button>
+        {" "}
+        <Button color="primary" variant="contained" disabled={!(presalesEnd && !capReached) || !valBeneficiary || !connection} loading={refundButtonLoading} onClick={refundCapNotReached}>
+          Refund
+        </Button>
+      </Grid>
 
-            <Button primary disabled={!(presalesEnd && capReached) || !valBeneficiary || !connection} loading={withdrawButtonLoading} onClick={withdrawPresalesTokens}>
-              Withdraw
-            </Button>
-
-            <Button primary disabled={!(presalesEnd && !capReached) || !valBeneficiary || !connection} loading={refundButtonLoading} onClick={refundCapNotReached}>
-              Refund
-            </Button>
-        </Form.Field>
-      </Form>
-
-      <Message hidden={!indvCap} error={true} header="Exceed individual limit!" content={"This transaction will fail because you exceeded individual limit. Enter a lower amount"} />
-
-      <Card.Group>
-        <Card
-          header="Your stats"
-          description={
-            <div>
-              <p>
+      <br></br>
+      <Grid
+        container
+        direction="row"
+        justify="center"
+        alignItems="center"
+      >
+        <Card className={cardClasses.root}>
+          <CardContent>
+            <Typography className={cardClasses.title} color="textSecondary" gutterBottom>
+              Your stats
+            </Typography>
+            <Typography variant="body2" component="p">
                 Tokens bought: {tokensAmount}
-              </p>
-              <p>
+            </Typography>
+            <Typography variant="body2" component="p">
                 BNB contributed: {contributed}
-              </p>
-            </div>
-          }
-        />
+            </Typography>
+          </CardContent>
+        </Card>
 
-        <Card
-          header="Beneficiary's stats"
-          description={
-            <div>
-              <p>
+        <Card className={cardClasses.root}>
+          <CardContent>
+            <Typography className={cardClasses.title} color="textSecondary" gutterBottom>
+              Beneficiary's stat
+            </Typography>
+            <Typography variant="body2" component="p">
                 Tokens bought: {beneTokensAmount}
-              </p>
-              <p>
+            </Typography>
+            <Typography variant="body2" component="p">
                 BNB contributed: {beneContributed}
-              </p>
-            </div>
-          }
-        />
-      </Card.Group>
+            </Typography>
+          </CardContent>
+        </Card>
 
-      <h3>
-        Transaction hash: <a href={txnLink}>{txnHash ?  txnHash : " "}</a>
-      </h3>
+      </Grid>
 
-      <Message hidden={!txnHash} header={"Verify you transaction here"} content={<a href={txnLink}>{txnHash}</a>} />
+      {txnHash ? <Alert severity="info">{"Verify you transaction here"} content={<a href={txnLink}>{txnHash}</a>}</Alert> : " "}
 
     </div>
   );
