@@ -1,26 +1,19 @@
 import { useState, useEffect } from 'react';
 import { ethers, Contract , utils} from 'ethers';
 import { Form, Input, Message, Button, Card } from 'semantic-ui-react';
-import Pluto from './contracts/Pluto.json';
+import Leap from './contracts/Leap.json';
+import Web3Modal from "web3modal";
+import WalletConnectProvider from "@walletconnect/web3-provider";
 import 'semantic-ui-css/semantic.min.css'
 
-// if use this, it does not connect to metamask after build
-//const provider = new ethers.providers.Web3Provider(window.ethereum);
-
-// https://stackoverflow.com/questions/60785630/how-to-connect-ethers-js-with-metamask
-let provider, signer, pluto;
-
-if (window.ethereum === undefined) {
-  provider = undefined;
-  signer = undefined;
-  pluto = undefined;
-} else {
-  window.ethereum.enable().then(provider = new ethers.providers.Web3Provider(window.ethereum, "any"));
-}
-
+let provider = undefined;
+let signer = undefined;
+let leap = undefined;
 
 function App() {
   const [connection, setConnection] = useState(false);
+  const [signerAddress, setSignerAddress] = useState(undefined);
+
   const [totalContribution, setTotalContribution] = useState(0);
   const [chainID, setChainID] = useState(undefined);
 
@@ -54,22 +47,33 @@ function App() {
     const load = setInterval(async () => {
       if (provider !== undefined) {
         const _chainID = (await provider.getNetwork())["chainId"];
+        signer = provider.getSigner();
+        const _address = await signer.getAddress();
+        setSignerAddress(_address);
+
         if (_chainID === 97 || _chainID === 56){
           setConnection(true);
-          const _address = await signer.getAddress();
+          
+          if (leap === undefined) {
+            leap = new Contract(
+              Leap.networks[_chainID].address,
+              Leap.abi,
+              signer
+            )
+          }
 
-          let _tokensAmount = await pluto.getTokens(_address);
+          let _tokensAmount = await leap.getTokens(_address);
           _tokensAmount = utils.formatUnits(_tokensAmount, 9);
 
-          let _contributed = await pluto.getContribution(_address);
+          let _contributed = await leap.getContribution(_address);
           _contributed = utils.formatEther(_contributed);
 
-          let _totalContribution = await pluto.weiRaised();
+          let _totalContribution = await leap.weiRaised();
           _totalContribution = utils.formatEther(_totalContribution);
 
-          const _presalesStart = await pluto.getPresalesStarted();
-          const _presalesEnd = await pluto.getPresalesEnded();
-          const _capReached = await pluto.capReached();
+          const _presalesStart = await leap.getPresalesStarted();
+          const _presalesEnd = await leap.getPresalesEnded();
+          const _capReached = await leap.capReached();
 
           const _allowBuy = _presalesStart && !_presalesEnd;
 
@@ -80,41 +84,54 @@ function App() {
           setPresalesEnd(_presalesEnd);
           setAllowBuy(_allowBuy);
           setCapReached(_capReached);
+          setConnection(true);
         } else {
           setConnection(false);
         }
+
       } else {
         setConnection(false);
       }
     }, 1000);
 
-    const init = async () => {
-      if (provider !== undefined) {
-        const _chainID = (await provider.getNetwork())["chainId"];
-        signer = provider.getSigner();
-
-        pluto = new Contract(
-          Pluto.networks[_chainID].address,
-          Pluto.abi,
-          signer
-        );
-
-        setChainID(_chainID);
-      } else {
-        signer = undefined;
-        pluto = undefined;
-      }
-    }
-
-    init();
-
     return () => clearInterval(load);
   }, []);
+
+  const getProvider = async (e) => {
+    let providerOptions = {
+      walletconnect: {
+        package: WalletConnectProvider,
+        options: {
+          rpc: {
+            // mainnet: https://bsc-dataseed.binance.org/
+            // testnet: https://data-seed-prebsc-1-s1.binance.org:8545/
+            56: 'https://data-seed-prebsc-1-s1.binance.org:8545/'
+          },
+          network: 'binance',
+          chainId: 56,
+          infuraId: "1212",
+        }
+      }
+    };
+
+    const web3Modal = new Web3Modal({
+      network: "binance",
+      cacheProvider: true, 
+      providerOptions, 
+    });
+
+    let _provider = await web3Modal.connect();
+    provider = new ethers.providers.Web3Provider(_provider, "any");
+    const _chainID = (await provider.getNetwork())["chainId"];
+    signer = provider.getSigner();
+
+    setChainID(_chainID);
+  };
 
   const buyPresalesTokens = async (e) => {
     e.preventDefault();
     setBuyButtonLoading(true);
-    const tx = await pluto.buyPresalesTokens(beneficiary, {gasLimit: 500000, value: contribution});
+    const tx = await leap.buyPresalesTokens(beneficiary, {gasLimit: 500000, value: contribution});
     await tx.wait();
 
     let txLink;
@@ -122,12 +139,12 @@ function App() {
       txLink = "https://testnet.bscscan.com/tx/" + tx.hash;
     } else if (chainID === 56) {
       txLink = "https://bscscan.com/tx/" + tx.hash;
-    };
+    }
 
-    let _tokensAmount = await pluto.getTokens(beneficiary);
+    let _tokensAmount = await leap.getTokens(beneficiary);
     _tokensAmount = utils.formatUnits(_tokensAmount, 9);
 
-    let _contributed = await pluto.getContribution(beneficiary);
+    let _contributed = await leap.getContribution(beneficiary);
     _contributed = utils.formatEther(_contributed);
     
     setBeneContributed(_contributed);
@@ -140,7 +157,7 @@ function App() {
   const withdrawPresalesTokens = async (e) => {
     e.preventDefault();
     setWithdrawButtonLoading(true);
-    const tx = await pluto.withdrawPresalesTokens(beneficiary, {gasLimit: 500000});
+    const tx = await leap.withdrawPresalesTokens(beneficiary, {gasLimit: 500000});
     await tx.wait();
 
     let txLink;
@@ -148,7 +165,7 @@ function App() {
       txLink = "https://testnet.bscscan.com/tx/" + tx.hash;
     } else if (chainID === 56) {
       txLink = "https://bscscan.com/tx/" + tx.hash;
-    };
+    }
 
     setTxnHash(tx.hash);
     setTxnLink(txLink);
@@ -158,15 +175,24 @@ function App() {
   const refundCapNotReached = async (e) => {
     e.preventDefault();
     setRefundButtonLoading(true);
-    const tx = await pluto.refund(beneficiary, {gasLimit: 500000});
+    const tx = await leap.refund(beneficiary, {gasLimit: 500000});
     await tx.wait();
+
+    let _tokensAmount = await leap.getTokens(beneficiary);
+    _tokensAmount = utils.formatUnits(_tokensAmount, 9);
+
+    let _contributed = await leap.getContribution(beneficiary);
+    _contributed = utils.formatEther(_contributed);
+    
+    setBeneContributed(_contributed);
+    setBeneTokensAmount(_tokensAmount);    
 
     let txLink;
     if (chainID === 97) {
       txLink = "https://testnet.bscscan.com/tx/" + tx.hash;
     } else if (chainID === 56) {
       txLink = "https://bscscan.com/tx/" + tx.hash;
-    };
+    }
 
     setTxnHash(tx.hash);
     setTxnLink(txLink);
@@ -180,10 +206,10 @@ function App() {
       if (valid) {
         _beneficiary = utils.getAddress(_beneficiary);
 
-        let _tokensAmount = await pluto.getTokens(_beneficiary);
+        let _tokensAmount = await leap.getTokens(_beneficiary);
         _tokensAmount = utils.formatUnits(_tokensAmount, 9);
 
-        let _contributed = await pluto.getContribution(_beneficiary);
+        let _contributed = await leap.getContribution(_beneficiary);
         _contributed = utils.formatEther(_contributed);
         
         setBeneContributed(_contributed);
@@ -208,7 +234,7 @@ function App() {
         setContribution(0);
         setIndvCap(false);
       } else {
-        let _contributed = await pluto.getContribution(beneficiary);
+        let _contributed = await leap.getContribution(beneficiary);
         _contributed = utils.formatEther(_contributed);
         const _individualCap = parseFloat(_contribution) + parseFloat(_contributed);
         if (_individualCap > 0.5) {
@@ -233,10 +259,13 @@ function App() {
       <h1>Presales</h1>
       <br></br>
 
-      <Message hidden={connection} error={!connection} header="Opps!" content={"Please connect to BSC through Metamask!"} />
+      <Button negative={!connection} positive={connection} onClick={getProvider}>{connection ? "Connected" :"Connect to Web3"}</Button>
 
-      <Message info hidden={presalesStart || !connection} header="Presales has not started yet" />
-      <Message info hidden={!presalesEnd} header="Presales has already ended" />
+      <Message hidden={connection} error={!connection} header="Opps!" content={"Please connect to BSC through your wallet!"} />
+      <Message hidden={!connection} info header="Connected to web3" content={"Address: " + signerAddress} />
+
+      <Message warning hidden={presalesStart || !connection} header="Presales has not started yet" />
+      <Message warning hidden={!presalesEnd} header="Presales has already ended" />
       <Message header={"Current Total Contribution"} content={totalContribution + " BNB"} />
  
       <Form>
@@ -305,6 +334,8 @@ function App() {
       <h3>
         Transaction hash: <a href={txnLink}>{txnHash ?  txnHash : " "}</a>
       </h3>
+
+      <Message hidden={!txnHash} header={"Verify you transaction here"} content={<a href={txnLink}>{txnHash}</a>} />
 
     </div>
   );
